@@ -1,0 +1,7 @@
+# dsh-chatgpt-composer bundle patch for DeepSeek Harness (dsh) 0.2.1-rc.2.
+# Inserts one row; the node half owns the read-only CDP adapter and the
+# chatgptComposer Remote service, the browser half registers the composer-right
+# toggle through dsh.client / exports['./client'].
+- insert:
+    - id: chatgpt-composer
+      name: dsh-chatgpt-composer

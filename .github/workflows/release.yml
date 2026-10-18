@@ -1,0 +1,59 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node -e 'const p = require("./package.json"); if (process.env.RELEASE_TAG !== "v" + p.version) throw Error("tag/version mismatch")'
+      - name: Check and build package
+        run: npm run build
+      - name: Verify reproducible archive
+        run: |
+          sha256sum dsh-chatgpt-composer-*.tgz > SHA256SUMS
+          npm run pack
+          sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-chatgpt-composer
+          path: |
+            dsh-chatgpt-composer-*.tgz
+            SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-chatgpt-composer
+          path: release
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "ChatGPT 会话绑定 $RELEASE_TAG" --notes-file CHANGELOG.md

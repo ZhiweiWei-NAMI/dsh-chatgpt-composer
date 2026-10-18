@@ -1,0 +1,10 @@
+node_modules/
+.check/
+.sdk/
+*.tgz
+*.log
+SHA256SUMS
+.env
+.env.*
+.DS_Store
+Thumbs.db
