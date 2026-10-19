@@ -1,7 +1,7 @@
 {
   "name": "dsh-chatgpt-composer",
-  "version": "0.1.4",
-  "description": "Session-scoped ChatGPT composer target selector with explicit browser actions, historical model readback, and read-only agent context checks",
+  "version": "0.2.1-mirror.6",
+  "description": "ChatGPT composer with a Mirror transcript view for DSH. Reuses the existing browser, connection and Markdown attachment flow; account and port controls remain in the chat card.",
   "type": "module",
   "main": "lib/index.js",
   "repository": {
@@ -11,8 +11,7 @@
   "homepage": "https://github.com/ZhiweiWei-NAMI/dsh-chatgpt-composer#readme",
   "bugs": "https://github.com/ZhiweiWei-NAMI/dsh-chatgpt-composer/issues",
   "scripts": {
-    "check": "node scripts/check.mjs",
-    "build": "node scripts/check.mjs && node scripts/pack.mjs",
+    "build": "node scripts/pack.mjs",
     "pack": "node scripts/pack.mjs"
   },
   "devDependencies": {
@@ -43,7 +42,9 @@
   },
   "files": [
     "lib/contract.js",
+    "lib/account.js",
     "lib/cdp.js",
+    "lib/browser-launcher.js",
     "lib/index.js",
     "lib/client.js",
     "lib/typert.host.js",
@@ -63,7 +64,10 @@
       "inject": [
         "@deepseek-ai/dsh-api-gateway",
         "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-ui-conversation"
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
       ]
     }
   },

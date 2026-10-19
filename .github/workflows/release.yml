@@ -25,7 +25,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: node -e 'const p = require("./package.json"); if (process.env.RELEASE_TAG !== "v" + p.version) throw Error("tag/version mismatch")'
-      - name: Check and build package
+      - name: Build package
         run: npm run build
       - name: Verify reproducible archive
         run: |
@@ -56,4 +56,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "ChatGPT 会话绑定 $RELEASE_TAG" --notes-file CHANGELOG.md
+        run: gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "ChatGPT Mirror $RELEASE_TAG" --notes-file CHANGELOG.md

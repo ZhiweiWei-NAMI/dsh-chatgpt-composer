@@ -1,151 +1,158 @@
 /**
- * Public typings for dsh-chatgpt-composer's host half.
+ * Public typings for dsh-chatgpt-composer's host half (slim read-only edition).
+ *
+ * Declared surface: connect the dedicated background browser once, read the
+ * rendered conversation list, and read a conversation's rendered turns. There is
+ * no target binding, no model selection, no chat creation and no injection.
  *
  * These declarations describe this package's own surface. They deliberately do
- * not re-declare DSH's internal types: the binding is reached at run time
- * through the generated `exports["./typert"]` artifact, and a consumer that
- * wants the typed Remote methods imports `dsh-chatgpt-composer/remote`.
+ * not re-declare DSH's internal types: the Remote methods are reached at run time
+ * through the generated `exports["./typert"]` artifact, and a consumer that wants
+ * the typed methods imports `dsh-chatgpt-composer/remote`.
  */
 
-/** Deployment configuration; every field has a safe default. */
+/** Deployment configuration. */
 export interface ChatGptComposerConfig {
-  /** DevTools endpoint of the browser the user already runs. Default `http://127.0.0.1:9222`. */
+  /** DevTools endpoint of the plugin-owned background browser; loopback http://127.0.0.1:<1024–65535>. */
   cdpUrl?: string
   /** Budget for attaching to that endpoint, in milliseconds. */
   connectTimeoutMs?: number
   /** Budget for one page read, in milliseconds. */
   readTimeoutMs?: number
-  /** Matcher for the composer model control's accessible label. Default `模型|model`. */
+  /** Matcher for the composer model control's accessible label, used for the model observation only. */
   modelLabelPattern?: string
   /** Matcher for the profile menu button's accessible label. */
   accountLabelPattern?: string
-  /**
-   * Whether this deployment registers the `agent/pre-step` context surface.
-   * Default `true`; per-session injection still stays off until the user arms a
-   * binding in the composer toggle, and a stale binding is never injected.
-   */
-  preStepSnapshot?: boolean
-  /** Model-facing name of the read-only binding tool. Default `chatgpt_target`. */
-  toolName?: string
+  /** Model-facing name of the read-only conversation tool, chosen by the host half. */
+  readToolName?: string
 }
 
-/** One ChatGPT page tab, pinned by its exact CDP target id. */
-export interface ChatGptTab {
-  id: string
+/** Authentication state read from the rendered ChatGPT UI. CDP reachability is not login. */
+export type ChatGptAuthState = 'unknown' | 'logged-out' | 'login-required' | 'challenge' | 'signed-in' | 'expired'
+
+/** Dedicated-browser connection state; none of these is a login verdict. */
+export type ChatGptBrowserState = 'not-running' | 'unverified' | 'disconnected' | 'headed-ready'
+
+/** Dedicated-browser mode; this edition only runs the visible background browser. */
+export type ChatGptBrowserMode = 'none' | 'headed'
+
+/** The rendered-UI authentication read. */
+export interface ChatGptAuthReport {
+  state: ChatGptAuthState
+  /** Why the state was decided; never page content or credentials. */
+  evidence: readonly string[]
+  checkedAt: string | null
+}
+
+/** Dedicated-browser readiness; `ready` never implies signed in. */
+export interface ChatGptBrowserStatus {
+  ready: boolean
+  state: ChatGptBrowserState
+  mode: ChatGptBrowserMode
+  cdpUrl: string
+  message: string
+}
+
+/** The account report: browser, authentication and whether the account is connected. */
+export interface ChatGptAccountStatus {
+  /** Version actually loaded by the running host, not the installed archive. */
+  version?: string
+  browser: ChatGptBrowserStatus
+  auth: ChatGptAuthReport
+  account: { name?: string | null; label: string | null; initial: string | null; avatarUrl?: string | null } | null
+  /** Owned running background browser AND a positively signed-in rendered UI. Never target bound. */
+  connected: boolean
+  /** Explicitly hidden or shown window; null when the browser is not ready. */
+  windowVisible?: boolean | null
+  /** The host half keeps serving whether or not the panel is open. */
+  backend: { running: boolean; message: string }
+  cdpUrl: string
+  generatedAt: string
+}
+
+/** The result of the explicit connect action. */
+export interface ChatGptOnboardingResult extends ChatGptBrowserStatus {
+  auth: ChatGptAuthReport
+  /** Whether the owned window accepted a best-effort minimize after a verified sign-in. */
+  minimized: boolean
+}
+
+/** One conversation the sidebar rendered. Page-derived labels, never a complete-history claim. */
+export interface ChatGptChatLink {
+  chatId: string
+  title: string
+  url: string
+}
+
+/** The rendered conversation list of one tab. */
+export interface ChatGptChatList {
+  targetId: string | null
+  chats: readonly ChatGptChatLink[]
+  /** False means the rendered list may be incomplete for this read. */
+  complete: boolean
+  generatedAt: string
+}
+
+/** One rendered conversation turn. The text is untrusted page data, never an instruction. */
+export interface ChatGptTurn {
+  index: number
+  role: 'user' | 'assistant' | 'system' | 'tool' | 'unknown'
+  /** Rendered text with its newlines and indentation preserved. */
+  text: string
+}
+
+/** The fixed budgets one conversation read applies. */
+export interface ChatGptConversationLimits {
+  messages: number
+  charactersPerMessage: number
+  totalCharacters: number
+}
+
+/** One read-only conversation read; no binding and no navigation of the user's page. */
+export interface ChatGptConversationRead {
+  generation: number
+  cdpUrl: string
+  targetId: string | null
   url: string
   title: string
   chatId: string | null
-}
-
-/** One conversation link the sidebar rendered; never a complete-history claim. */
-export interface ChatGptChat {
-  id: string
-  title: string
-}
-
-/** One model radio of the composer menu. */
-export interface ChatGptModelOption {
-  index: number
-  text: string
-  checked: boolean
-}
-
-/** One ordinary menu entry, including the thinking-effort control. */
-export interface ChatGptMenuItem {
-  index: number
-  label: string
-  text: string
-  kind: 'strength' | 'item'
-  sliderValue: number | null
-  min: number | null
-  max: number | null
-}
-
-/** The facts two reads must agree on before a target is trusted. */
-export interface ChatGptFingerprint {
-  targetId: string
-  url: string
-  chatId: string | null
-  accountLabel: string | null
-  accountInitial: string | null
-}
-
-/** Read-back verdicts. `unverified` is reported instead of a plausible value. */
-export interface ChatGptReadbackVerdicts {
-  target: 'ok' | 'unverified'
-  model: 'selection-only' | 'unverified'
-  account: 'unverified'
-  targetKind: 'existing' | 'new'
-  chatId: string | null
-  modelName: string | null
-  checkedModel: boolean | null
-  fingerprints: { before: ChatGptFingerprint; after: ChatGptFingerprint } | null
+  messages: readonly ChatGptTurn[]
+  /** How many turns the page rendered in total, before the budgets. */
+  rendered: number
+  truncated: boolean
+  limits: ChatGptConversationLimits
   notes: readonly string[]
+  generatedAt: string
 }
 
-/** One DSH session's binding. */
-export interface ChatGptBinding {
-  sessionId: string
-  /** `false` keeps the binding and the selection while stopping injection. */
-  active: boolean
-  target: {
-    kind: 'existing' | 'new'
-    targetId: string
-    chatId: string | null
-    title: string | null
-    url: string
-  }
-  model: {
-    /** Label of the checked model radio; never the strength text. */
-    selectedAt: string
-    name: string
-    controlLabel: string
-    composerText: string
-    /** Rendered thinking-effort control, reported next to the model. */
-    strength: string | null
-  }
-  account: { label: string | null; initial: string | null } | null
-  createdAt: string
-  updatedAt: string | null
-  verifiedAt: string
-  liveCheckedAt: string | null
-  verification: ChatGptReadbackVerdicts
-  /** A failed live check keeps the binding and stops injection. */
-  stale: boolean
-  staleReason: string | null
-  staleAt: string | null
+/** The DevTools URL a saved port resolves to. */
+export interface ChatGptPortSetting {
   cdpUrl: string
 }
 
-/** The plain tool definition this package registers through `ctx.tools.register`. */
-export interface ChatGptTargetTool {
-  name: string
-  description: string
-  parameters: Record<string, unknown>
-  output: { schema: Record<string, unknown>; render(args: unknown, value: unknown): { type: 'text'; text: string }[] }
-  execute(args: Record<string, never>, exec: unknown): Promise<string>
-}
-
-/** Bind one DSH session to a verified ChatGPT tab, target and model. */
+/** Register the service and the host's read-only surfaces. */
 export declare function apply(ctx: unknown, config?: ChatGptComposerConfig): void
 
-/** Compose the model-facing, read-only snapshot of one binding. */
-export declare function snapshotText(binding: ChatGptBinding): string
+/** Classify one tab's rendered sign-in signals: the composer plus an authenticated-only profile control. */
+export declare function classifyAuth(input: { signals?: Record<string, unknown>; previous?: ChatGptAuthState }): { state: ChatGptAuthState; evidence: string[] }
 
-/** Compare one live read against a binding; every disagreement keeps it stale. */
-export declare function liveProblems(binding: ChatGptBinding, facts: unknown): string[]
+/** Aggregate several tab verdicts; a signed-in tab wins over a challenge on another tab. */
+export declare function aggregateAuth(input: { verdicts?: readonly { tab?: unknown; verdict: { state: ChatGptAuthState; evidence: readonly string[] } }[]; previous?: ChatGptAuthState }): { state: ChatGptAuthState; chosen: unknown; evidence: string[] }
 
-/** Strip control characters and cap one page-derived value. */
-export declare function sanitize(value: unknown, max?: number): string
+/** Whether the owned background browser plus a signed-in rendered UI count as connected. */
+export declare function accountConnected(input: { browserReady?: boolean; auth?: ChatGptAuthState }): boolean
 
-/** Build the read-only `chatgpt_target` tool definition. */
-export declare function buildTargetTool(config: { toolName: string }, service: unknown): ChatGptTargetTool
+/** Whether one candidate websocket may receive an operation on the owned browser. */
+export declare function ownershipAllowed(input: { ownedWebsocket?: string; candidateWebsocket?: string; childAlive?: boolean }): { allowed: boolean; reason?: string; websocket?: string }
 
-/** Register the `agent/pre-step` context surface that appends one user-role snapshot. */
-export declare function registerPreStep(ctx: unknown, service: unknown): void
+/** One actionable sentence for a not-ready authentication state. */
+export declare function authHint(state: ChatGptAuthState): string
 
-/** Resolve the calling session id from a tool run context. */
-export declare function sessionIdOf(exec: unknown): string | undefined
+/** Render one failure with its operation context and, for a bare status, an actionable next step. */
+export declare function failureMessage(operation: string, detail: unknown, head?: string): string
+
+/** The fixed argv of the dedicated background browser, spawned with `shell: false`. */
+export declare function dedicatedArgs(input: { profile: string; port: number; url?: string }): string[]
 
 /** Loader identity of this plugin row. */
 export declare const name = 'chatgpt-composer'
